@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grid Builder — Image to Shape Map</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --bg2: #1a1d27;
+    --bg3: #22263a;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #e8eaf0;
+    --text2: #8b90a0;
+    --accent: #5b7fff;
+    --accent2: #3d5ce8;
+    --green: #3ecf8e;
+    --amber: #f5a623;
+    --red: #e24b4a;
+    --cell: 24px;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 1rem 1.5rem;
+    border-bottom: 0.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg2);
+  }
+
+  header svg { flex-shrink: 0; }
+
+  header h1 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  header p {
+    font-size: 12px;
+    color: var(--text2);
+    margin-top: 1px;
+  }
+
+  .layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    height: calc(100vh - 57px);
+  }
+
+  .sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    background: var(--bg2);
+    border-right: 0.5px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .panel {
+    border-bottom: 0.5px solid var(--border);
+    padding: 1rem;
+  }
+
+  .panel-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin-bottom: 12px;
+  }
+
+  .drop-zone {
+    border: 1.5px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 1.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: var(--bg3);
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(91,127,255,0.06);
+  }
+
+  .drop-zone svg { margin: 0 auto 8px; display: block; }
+  .drop-zone p { font-size: 13px; color: var(--text2); line-height: 1.4; }
+  .drop-zone span { color: var(--accent); }
+
+  .thumb-wrap {
+    display: none;
+    margin-top: 10px;
+    position: relative;
+  }
+
+  .thumb-wrap img {
+    width: 100%;
+    border-radius: var(--radius);
+    display: block;
+    max-height: 120px;
+    object-fit: contain;
+    background: repeating-conic-gradient(#333 0% 25%, #222 0% 50%) 0 0 / 12px 12px;
+  }
+
+  .thumb-clear {
+    position: absolute;
+    top: 4px; right: 4px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.6);
+    border: 0.5px solid var(--border2);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--text2);
+    line-height: 1;
+  }
+
+  .ctrl-row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ctrl-item label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
+
+  .ctrl-item label span {
+    font-weight: 600;
+    color: var(--text);
+    font-size: 12px;
+    min-width: 32px;
+    text-align: right;
+  }
+
+  input[type="range"] {
+    width: 100%;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border2);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: none;
+  }
+
+  select {
+    width: 100%;
+    background: var(--bg3);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 12px;
+    padding: 6px 8px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .toggle-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .toggle-btn {
+    flex: 1;
+    padding: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.12s;
+    text-align: center;
+  }
+
+  .toggle-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .btn-run {
+    width: 100%;
+    padding: 10px;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s, transform 0.08s;
+    margin-top: 4px;
+  }
+
+  .btn-run:hover { background: var(--accent2); }
+  .btn-run:active { transform: scale(0.98); }
+  .btn-run:disabled { background: var(--bg3); color: var(--text2); cursor: default; }
+
+  .btn-secondary {
+    width: 100%;
+    padding: 8px;
+    background: transparent;
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.12s;
+    margin-top: 6px;
+  }
+
+  .btn-secondary:hover { background: var(--bg3); color: var(--text); }
+
+  .stat-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .stat {
+    flex: 1;
+    background: var(--bg3);
+    border-radius: var(--radius);
+    padding: 8px;
+    text-align: center;
+  }
+
+  .stat .num {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .stat .lbl {
+    font-size: 10px;
+    color: var(--text2);
+    margin-top: 2px;
+  }
+
+  .legend {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text2);
+  }
+
+  .legend-swatch {
+    width: 16px; height: 16px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    border: 0.5px solid rgba(255,255,255,0.1);
+  }
+
+  .canvas-area {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 1.5rem;
+    background: var(--bg);
+    position: relative;
+  }
+
+  #output-canvas {
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  .empty-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text2);
+    pointer-events: none;
+  }
+
+  .empty-state svg { opacity: 0.3; }
+  .empty-state p { font-size: 14px; opacity: 0.6; }
+
+  .status-bar {
+    position: fixed;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg2);
+    border: 0.5px solid var(--border2);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 12px;
+    color: var(--text2);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+    z-index: 10;
+  }
+
+  .status-bar.show { opacity: 1; }
+
+  .progress-bar {
+    height: 2px;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.1s;
+    border-radius: 1px;
+    margin-top: 8px;
+  }
+
+  input[type="file"] { display: none; }
+
+  .shape-key {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .shape-key-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--text2);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+    <rect width="28" height="28" rx="6" fill="#5b7fff"/>
+    <rect x="5" y="5" width="8" height="8" rx="1" fill="white"/>
+    <polygon points="13,19 5,19 5,13" fill="rgba(255,255,255,0.6)"/>
+    <rect x="15" y="5" width="8" height="8" rx="1" fill="rgba(255,255,255,0.6)"/>
+    <polygon points="15,13 23,13 23,19" fill="white"/>
+    <rect x="15" y="19" width="8" height="4" rx="1" fill="rgba(255,255,255,0.4)"/>
+  </svg>
+  <div>
+    <h1>Grid Builder</h1>
+    <p>Convert images to placeable game shapes</p>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="sidebar">
+
+    <div class="panel">
+      <div class="panel-title">Image</div>
+      <div class="drop-zone" id="drop-zone">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <path d="M16 4v16M10 10l6-6 6 6" stroke="#5b7fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M6 22v2a2 2 0 002 2h16a2 2 0 002-2v-2" stroke="#8b90a0" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <p>Drop a PNG here or <span>click to upload</span></p>
+        <p style="margin-top:4px;font-size:11px;">Use transparent background PNG for best results</p>
+      </div>
+      <div class="thumb-wrap" id="thumb-wrap">
+        <img id="thumb" src="" alt="preview"/>
+        <div class="thumb-clear" id="thumb-clear">✕</div>
+        <div id="thumb-scale-label" style="font-size:10px;color:var(--text2);text-align:center;margin-top:4px;"></div>
+      </div>
+      <div class="progress-bar" id="progress-bar"></div>
+      <input type="file" id="file-input" accept="image/png,image/gif,image/webp,image/jpeg"/>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Grid settings</div>
+      <div class="ctrl-row">
+        <div class="ctrl-item">
+          <label>Cell size (px) <span id="cell-val">16</span></label>
+          <input type="range" id="cell-size" min="4" max="64" step="1" value="16"/>
+        </div>
+        <div class="ctrl-item">
+          <label>Image scale <span id="scale-val">1.0×</span></label>
+          <input type="range" id="img-scale" min="0.1" max="4" step="0.05" value="1"/>
+        </div>
+        <div class="ctrl-item">
+          <label>Fill threshold <span id="thresh-val">40%</span></label>
+          <input type="range" id="threshold" min="5" max="95" step="1" value="40"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Shape options</div>
+      <div class="ctrl-row">
+        <div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">Max triangle length</div>
+          <div class="toggle-row" id="tri-max-row">
+            <button class="toggle-btn" data-v="2">2</button>
+            <button class="toggle-btn" data-v="3">3</button>
+            <button class="toggle-btn active" data-v="4">4</button>
+            <button class="toggle-btn" data-v="6">6</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">Shape fill mode</div>
+          <div class="toggle-row" id="fill-mode-row">
+            <button class="toggle-btn active" data-v="solid">Solid</button>
+            <button class="toggle-btn" data-v="outline">Outline</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">Show grid</div>
+          <div class="toggle-row" id="grid-row">
+            <button class="toggle-btn active" data-v="yes">On</button>
+            <button class="toggle-btn" data-v="no">Off</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">Show original (ghost)</div>
+          <div class="toggle-row" id="ghost-row">
+            <button class="toggle-btn" data-v="yes">On</button>
+            <button class="toggle-btn active" data-v="no">Off</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Colors</div>
+      <div class="ctrl-row">
+        <div class="ctrl-item">
+          <label>Shape color</label>
+          <input type="color" id="shape-color" value="#5b7fff" style="width:100%;height:28px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg3);cursor:pointer;padding:2px 4px;"/>
+        </div>
+        <div class="ctrl-item">
+          <label>Background</label>
+          <input type="color" id="bg-color" value="#0f1117" style="width:100%;height:28px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg3);cursor:pointer;padding:2px 4px;"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Build output</div>
+      <button class="btn-run" id="run-btn" disabled>Convert image</button>
+      <button class="btn-secondary" id="export-btn" style="display:none">Export PNG</button>
+      <button class="btn-secondary" id="copy-list-btn" style="display:none">Copy shape list</button>
+      <div class="stat-row" id="stats" style="display:none">
+        <div class="stat"><div class="num" id="sq-count">0</div><div class="lbl">squares</div></div>
+        <div class="stat"><div class="num" id="tri-count">0</div><div class="lbl">triangles</div></div>
+        <div class="stat"><div class="num" id="cell-count">0</div><div class="lbl">total</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Shape guide</div>
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:#5b7fff"></div>
+          Full square (1×1)
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:rgba(91,127,255,0.55)"></div>
+          Triangle — corner up/down/left/right
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:rgba(91,127,255,0.3)"></div>
+          Partial / edge cell
+        </div>
+        <div class="legend-item" style="margin-top:4px;font-size:10px;line-height:1.5;">
+          Triangles span 1–<span id="max-len-display">4</span> cells. The algorithm greedy-fits the longest triangle that covers the edge before falling back to 1×1.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="canvas-area" id="canvas-area">
+    <div class="empty-state" id="empty-state">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+        <rect x="8" y="8" width="20" height="20" rx="2" stroke="#8b90a0" stroke-width="1.5"/>
+        <rect x="36" y="8" width="20" height="20" rx="2" stroke="#8b90a0" stroke-width="1.5"/>
+        <rect x="8" y="36" width="20" height="20" rx="2" stroke="#8b90a0" stroke-width="1.5"/>
+        <polygon points="36,36 56,36 56,56" stroke="#8b90a0" stroke-width="1.5" fill="none"/>
+        <line x1="32" y1="20" x2="36" y2="20" stroke="#5b7fff" stroke-width="1.5" stroke-dasharray="2,2"/>
+      </svg>
+      <p>Upload an image to get started</p>
+    </div>
+    <canvas id="output-canvas" style="display:none;"></canvas>
+  </div>
+</div>
+
+<div class="status-bar" id="status-bar"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+let imgData = null;
+let imgEl = null;
+let resultShapes = [];
+let maxTriLen = 4;
+let fillMode = 'solid';
+let showGrid = true;
+let showGhost = false;
+let autoDebounce = null;
+
+// ---- Debounced auto-convert ----
+// Triggers full recompute after a short delay when any setting changes.
+// For display-only changes (color, grid visibility, ghost) we skip recompute and just re-render.
+
+function scheduleConvert(delay = 280) {
+  if (!imgEl) return;
+  clearTimeout(autoDebounce);
+  showStatus('Updating…');
+  autoDebounce = setTimeout(runConvert, delay);
+}
+
+function scheduleRender() {
+  if (!resultShapes.length) return;
+  clearTimeout(autoDebounce);
+  autoDebounce = setTimeout(() => render(), 60);
+}
+
+// ---- UI wiring ----
+
+$('drop-zone').addEventListener('click', () => $('file-input').click());
+
+$('drop-zone').addEventListener('dragover', e => {
+  e.preventDefault();
+  $('drop-zone').classList.add('drag-over');
+});
+
+$('drop-zone').addEventListener('dragleave', () => {
+  $('drop-zone').classList.remove('drag-over');
+});
+
+$('drop-zone').addEventListener('drop', e => {
+  e.preventDefault();
+  $('drop-zone').classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) loadFile(f);
+});
+
+$('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) loadFile(e.target.files[0]);
+});
+
+$('thumb-clear').addEventListener('click', () => {
+  imgData = null; imgEl = null;
+  resultShapes = [];
+  $('thumb-wrap').style.display = 'none';
+  $('run-btn').disabled = true;
+  $('output-canvas').style.display = 'none';
+  $('empty-state').style.display = 'flex';
+  $('stats').style.display = 'none';
+  $('export-btn').style.display = 'none';
+  $('copy-list-btn').style.display = 'none';
+  $('file-input').value = '';
+});
+
+function bindRange(id, valId, fmt, recompute = true) {
+  const el = $(id), out = $(valId);
+  el.addEventListener('input', () => {
+    out.textContent = fmt(el.value);
+    if (recompute) scheduleConvert();
+    else scheduleRender();
+  });
+}
+
+bindRange('cell-size', 'cell-val', v => v + 'px', true);
+
+const imgScaleEl = $('img-scale');
+const imgScaleOut = $('scale-val');
+imgScaleEl.addEventListener('input', () => {
+  const s = parseFloat(imgScaleEl.value);
+  imgScaleOut.textContent = s.toFixed(1) + '×';
+  updateThumbScale(s);
+  scheduleConvert();
+});
+
+bindRange('threshold', 'thresh-val', v => v + '%', true);
+
+function updateThumbScale(s) {
+  if (!imgEl) return;
+  const maxW = 248;
+  const maxH = 160;
+  const scaledW = imgEl.naturalWidth * s;
+  const scaledH = imgEl.naturalHeight * s;
+
+  // Fit within maxW x maxH while preserving aspect ratio
+  const fitRatio = Math.min(1, maxW / scaledW, maxH / scaledH);
+  const displayW = Math.round(scaledW * fitRatio);
+  const displayH = Math.round(scaledH * fitRatio);
+
+  const thumb = $('thumb');
+  thumb.style.width = displayW + 'px';
+  thumb.style.height = displayH + 'px';
+  thumb.style.maxHeight = 'none';
+  thumb.style.maxWidth = 'none';
+
+  // Update pixel dimensions label
+  const scaleLabel = $('thumb-scale-label');
+  if (scaleLabel) {
+    scaleLabel.textContent = Math.round(scaledW) + ' × ' + Math.round(scaledH) + 'px';
+  }
+}
+
+function bindToggleRow(rowId, defaultVal, onChange) {
+  let val = defaultVal;
+  $(rowId).querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $(rowId).querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      val = btn.dataset.v;
+      onChange(val);
+    });
+  });
+  return () => val;
+}
+
+bindToggleRow('tri-max-row', '4', v => {
+  maxTriLen = parseInt(v);
+  $('max-len-display').textContent = v;
+  scheduleConvert(100);
+});
+
+bindToggleRow('fill-mode-row', 'solid', v => { fillMode = v; scheduleRender(); });
+bindToggleRow('grid-row', 'yes', v => { showGrid = v === 'yes'; scheduleRender(); });
+bindToggleRow('ghost-row', 'no', v => { showGhost = v === 'yes'; scheduleRender(); });
+
+$('shape-color').addEventListener('input', () => scheduleRender());
+$('bg-color').addEventListener('input', () => scheduleRender());
+
+$('run-btn').addEventListener('click', runConvert);
+$('export-btn').addEventListener('click', exportPNG);
+$('copy-list-btn').addEventListener('click', copyList);
+
+// ---- Image loading ----
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      imgEl = img;
+      const thumb = $('thumb');
+      thumb.src = e.target.result;
+      thumb.style.width = ''; thumb.style.height = '';
+      thumb.style.maxHeight = ''; thumb.style.maxWidth = '';
+      $('thumb-wrap').style.display = 'block';
+      $('run-btn').disabled = false;
+      $('empty-state').style.display = 'none';
+      updateThumbScale(parseFloat($('img-scale').value));
+      showStatus('Image loaded — ' + img.width + '×' + img.height + 'px — converting…');
+      runConvert();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function getImageData(img, scale) {
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0, w, h);
+  return ctx.getImageData(0, 0, w, h);
+}
+
+// ---- Core algorithm ----
+
+function sampleCell(data, cx, cy, cellPx, imgW, imgH) {
+  // Returns fraction 0-1 of opaque pixels in this cell
+  const x0 = cx * cellPx, y0 = cy * cellPx;
+  const x1 = Math.min(x0 + cellPx, imgW);
+  const y1 = Math.min(y0 + cellPx, imgH);
+  let opaque = 0, total = 0;
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const i = (y * imgW + x) * 4;
+      total++;
+      // Only count pixels that are fully/nearly opaque (alpha > 200 out of 255)
+      const a = data[i + 3];
+      if (a < 200) continue;
+      const r = data[i], g = data[i+1], b = data[i+2];
+      const lum = 0.299*r + 0.587*g + 0.114*b;
+      if (lum < 240) opaque++;
+    }
+  }
+  return total === 0 ? 0 : opaque / total;
+}
+
+// Sample 4 quadrants to guess diagonal direction
+function sampleQuadrants(data, cx, cy, cellPx, imgW, imgH) {
+  const x0 = cx * cellPx, y0 = cy * cellPx;
+  const mx = Math.min(x0 + Math.floor(cellPx/2), imgW);
+  const my = Math.min(y0 + Math.floor(cellPx/2), imgH);
+  const x1 = Math.min(x0 + cellPx, imgW);
+  const y1 = Math.min(y0 + cellPx, imgH);
+
+  function sampleRect(xa, ya, xb, yb) {
+    let op = 0, tot = 0;
+    for (let y = ya; y < yb; y++) for (let x = xa; x < xb; x++) {
+      const i = (y * imgW + x) * 4;
+      tot++;
+      if (data[i+3] < 200) continue;
+      if ((0.299*data[i]+0.587*data[i+1]+0.114*data[i+2]) < 240) op++;
+    }
+    return tot === 0 ? 0 : op/tot;
+  }
+
+  return {
+    tl: sampleRect(x0, y0, mx, my),
+    tr: sampleRect(mx, y0, x1, my),
+    bl: sampleRect(x0, my, mx, y1),
+    br: sampleRect(mx, my, x1, y1)
+  };
+}
+
+// Classify a single cell: empty | square | tri-NW | tri-NE | tri-SE | tri-SW
+function classifyCell(data, cx, cy, cellPx, imgW, imgH, thresh) {
+  const fill = sampleCell(data, cx, cy, cellPx, imgW, imgH);
+  if (fill < thresh * 0.3) return { type: 'empty' };
+  if (fill >= thresh * 0.8) return { type: 'square' };
+
+  // Partial — figure out which triangle orientation fits best
+  const q = sampleQuadrants(data, cx, cy, cellPx, imgW, imgH);
+
+  // Score each triangle orientation by how well it covers the filled area
+  // Triangle NW (top-left triangle): covers TL, half TL-TR, half TL-BL
+  const scores = {
+    'tri-NW': q.tl * 1.0 + q.tr * 0.3 + q.bl * 0.3 + q.br * 0.0,
+    'tri-NE': q.tl * 0.3 + q.tr * 1.0 + q.bl * 0.0 + q.br * 0.3,
+    'tri-SE': q.tl * 0.0 + q.tr * 0.3 + q.bl * 0.3 + q.br * 1.0,
+    'tri-SW': q.tl * 0.3 + q.tr * 0.0 + q.bl * 1.0 + q.br * 0.3,
+  };
+
+  // Also score empty and square
+  const best = Object.entries(scores).sort((a,b) => b[1]-a[1])[0];
+  if (fill > thresh * 0.55) return { type: 'square' };
+  return { type: best[0] };
+}
+
+// Try to extend a triangle run horizontally or vertically
+// Returns { length, axis } for greedy longest-fit
+function findTriangleRun(grid, cols, rows, cx, cy, dir, maxLen) {
+  // dir: 'right', 'down'
+  let len = 1;
+  while (len < maxLen) {
+    const nx = cx + (dir === 'right' ? len : 0);
+    const ny = cy + (dir === 'down' ? len : 0);
+    if (nx >= cols || ny >= rows) break;
+    const nc = grid[ny][nx];
+    if (nc === null || nc.placed) break;
+    if (nc.type === 'empty' || nc.type === 'square') break;
+    len++;
+  }
+  return len;
+}
+
+function runConvert() {
+  if (!imgEl) return;
+  const prevLabel = $('run-btn').textContent;
+  $('run-btn').textContent = '↻ Updating';
+  $('empty-state').style.display = 'none';
+
+  setTimeout(() => {
+    try {
+      const cellPx = parseInt($('cell-size').value);
+      const scale = parseFloat($('img-scale').value);
+      const thresh = parseInt($('threshold').value) / 100;
+
+      const data = getImageData(imgEl, scale);
+      const imgW = data.width, imgH = data.height;
+      const cols = Math.ceil(imgW / cellPx);
+      const rows = Math.ceil(imgH / cellPx);
+
+      setProgress(10);
+
+      // Build grid
+      const grid = [];
+      for (let r = 0; r < rows; r++) {
+        grid.push([]);
+        for (let c = 0; c < cols; c++) {
+          const cell = classifyCell(data.data, c, r, cellPx, imgW, imgH, thresh);
+          cell.placed = false;
+          grid[r].push(cell);
+        }
+      }
+
+      setProgress(50);
+
+      // Greedy pass: find triangle runs
+      const shapes = [];
+      let squares = 0, tris = 0;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cell = grid[r][c];
+          if (cell.placed || cell.type === 'empty') { cell.placed = true; continue; }
+
+          if (cell.type === 'square') {
+            shapes.push({ type: 'square', col: c, row: r, len: 1, orient: null });
+            cell.placed = true;
+            squares++;
+            continue;
+          }
+
+          // Triangle cell — try to extend
+          let bestLen = 1, bestDir = 'right';
+          const lenR = findTriangleRun(grid, cols, rows, c, r, 'right', maxTriLen);
+          const lenD = findTriangleRun(grid, cols, rows, c, r, 'down', maxTriLen);
+          if (lenD > lenR) { bestLen = lenD; bestDir = 'down'; }
+          else { bestLen = lenR; bestDir = 'right'; }
+
+          shapes.push({ type: 'tri', col: c, row: r, len: bestLen, dir: bestDir, orient: cell.type });
+          tris++;
+
+          // Mark covered cells as placed
+          for (let i = 0; i < bestLen; i++) {
+            const tc = c + (bestDir === 'right' ? i : 0);
+            const tr = r + (bestDir === 'down' ? i : 0);
+            if (tr < rows && tc < cols) grid[tr][tc].placed = true;
+          }
+        }
+      }
+
+      setProgress(80);
+      resultShapes = shapes;
+
+      $('sq-count').textContent = squares;
+      $('tri-count').textContent = tris;
+      $('cell-count').textContent = squares + tris;
+      $('stats').style.display = 'flex';
+      $('export-btn').style.display = 'block';
+      $('copy-list-btn').style.display = 'block';
+
+      render(data, imgW, imgH, cols, rows, cellPx);
+
+      setProgress(100);
+      setTimeout(() => setProgress(0), 600);
+      showStatus('Done — ' + (squares+tris) + ' shapes placed');
+
+    } catch(e) {
+      showStatus('Error: ' + e.message);
+      console.error(e);
+    }
+    $('run-btn').textContent = 'Convert image';
+  }, 20);
+}
+
+// ---- Rendering ----
+
+function render(data, imgW, imgH, cols, rows, cellPx) {
+  if (!resultShapes.length) return;
+
+  // Re-derive from sliders if called from toggle handlers
+  if (!data) {
+    cellPx = parseInt($('cell-size').value);
+    const scale = parseFloat($('img-scale').value);
+    data = getImageData(imgEl, scale);
+    imgW = data.width; imgH = data.height;
+    cols = Math.ceil(imgW / cellPx);
+    rows = Math.ceil(imgH / cellPx);
+  }
+
+  const C = $('output-canvas');
+  const W = cols * cellPx, H = rows * cellPx;
+  C.width = W; C.height = H;
+  const ctx = C.getContext('2d');
+
+  const bgColor = $('bg-color').value;
+  const shapeColor = $('shape-color').value;
+
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  // Ghost original image — draw at exactly the scaled pixel dimensions
+  if (showGhost && imgEl) {
+    ctx.globalAlpha = 0.2;
+    ctx.drawImage(imgEl, 0, 0, imgW, imgH);
+    ctx.globalAlpha = 1;
+  }
+
+  // Parse shape color for alpha variants
+  const r = parseInt(shapeColor.slice(1,3),16);
+  const g = parseInt(shapeColor.slice(3,5),16);
+  const b = parseInt(shapeColor.slice(5,7),16);
+  const solidRGBA = `rgba(${r},${g},${b},1)`;
+  const partialRGBA = `rgba(${r},${g},${b},0.7)`;
+
+  // Draw shapes
+  for (const s of resultShapes) {
+    const x = s.col * cellPx;
+    const y = s.row * cellPx;
+    const len = s.len;
+
+    ctx.fillStyle = solidRGBA;
+    ctx.strokeStyle = solidRGBA;
+    ctx.lineWidth = 1;
+
+    if (fillMode === 'outline') {
+      ctx.fillStyle = 'transparent';
+      ctx.strokeStyle = solidRGBA;
+    }
+
+    if (s.type === 'square') {
+      if (fillMode === 'solid') {
+        ctx.fillRect(x+0.5, y+0.5, cellPx-1, cellPx-1);
+      } else {
+        ctx.strokeRect(x+0.5, y+0.5, cellPx-1, cellPx-1);
+      }
+      continue;
+    }
+
+    // Triangle — draw polygon
+    const endX = s.dir === 'right' ? x + len * cellPx : x + cellPx;
+    const endY = s.dir === 'down' ? y + len * cellPx : y + cellPx;
+
+    let pts;
+    const orient = s.orient;
+
+    if (len === 1) {
+      // 1x1 triangle
+      if (orient === 'tri-NW') pts = [[x,y],[x+cellPx,y],[x,y+cellPx]];
+      else if (orient === 'tri-NE') pts = [[x,y],[x+cellPx,y],[x+cellPx,y+cellPx]];
+      else if (orient === 'tri-SE') pts = [[x+cellPx,y],[x+cellPx,y+cellPx],[x,y+cellPx]];
+      else pts = [[x,y],[x+cellPx,y+cellPx],[x,y+cellPx]];
+    } else if (s.dir === 'right') {
+      // Horizontal run: right triangle spanning len cells wide, 1 cell tall
+      const W2 = len * cellPx;
+      if (orient === 'tri-NW' || orient === 'tri-NE') {
+        pts = [[x,y],[x+W2,y],[x,y+cellPx]];
+      } else {
+        pts = [[x+W2,y],[x+W2,y+cellPx],[x,y+cellPx]];
+      }
+    } else {
+      // Vertical run: right triangle spanning 1 cell wide, len cells tall
+      const H2 = len * cellPx;
+      if (orient === 'tri-NW' || orient === 'tri-SW') {
+        pts = [[x,y],[x+cellPx,y],[x,y+H2]];
+      } else {
+        pts = [[x+cellPx,y],[x+cellPx,y+H2],[x,y+H2]];
+      }
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.closePath();
+    if (fillMode === 'solid') ctx.fill();
+    else ctx.stroke();
+  }
+
+  // Grid overlay
+  if (showGrid) {
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.12)`;
+    ctx.lineWidth = 0.5;
+    for (let col = 0; col <= cols; col++) {
+      ctx.beginPath(); ctx.moveTo(col*cellPx, 0); ctx.lineTo(col*cellPx, H); ctx.stroke();
+    }
+    for (let row = 0; row <= rows; row++) {
+      ctx.beginPath(); ctx.moveTo(0, row*cellPx); ctx.lineTo(W, row*cellPx); ctx.stroke();
+    }
+  }
+
+  C.style.display = 'block';
+}
+
+// ---- Export ----
+
+function exportPNG() {
+  const C = $('output-canvas');
+  const link = document.createElement('a');
+  link.download = 'grid-build.png';
+  link.href = C.toDataURL('image/png');
+  link.click();
+}
+
+function copyList() {
+  if (!resultShapes.length) return;
+  const lines = ['# Grid Builder Shape List', '# col, row, type, length, orientation/direction', ''];
+  for (const s of resultShapes) {
+    if (s.type === 'square') {
+      lines.push(`SQUARE col=${s.col} row=${s.row}`);
+    } else {
+      lines.push(`TRIANGLE col=${s.col} row=${s.row} len=${s.len} dir=${s.dir} orient=${s.orient}`);
+    }
+  }
+  navigator.clipboard.writeText(lines.join('\n')).then(() => showStatus('Shape list copied to clipboard'));
+}
+
+// ---- Helpers ----
+
+function setProgress(pct) {
+  $('progress-bar').style.width = pct + '%';
+}
+
+let statusTimer;
+function showStatus(msg) {
+  const bar = $('status-bar');
+  bar.textContent = msg;
+  bar.classList.add('show');
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => bar.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
